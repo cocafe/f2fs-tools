@@ -349,7 +349,11 @@ static int f2fs_prepare_super_block(void)
 		return -1;
 	}
 
-	uuid_generate(sb->uuid);
+	if (c.set_uuid) {
+		memcpy(sb->uuid, c.s_uuid, sizeof(sb->uuid));
+	} else {
+		uuid_generate(sb->uuid);
+	}
 
 	utf8_to_utf16(sb->volume_name, (const char *)c.vol_label,
 				MAX_VOLUME_NAME, strlen(c.vol_label));

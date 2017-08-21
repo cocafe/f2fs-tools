@@ -295,6 +295,11 @@ struct f2fs_configuration {
 	int ro;
 	__le32 feature;			/* defined features */
 
+#define F2FS_UUID_LEN		(16)
+	int set_uuid;
+	char *str_uuid;
+	__u8 s_uuid[F2FS_UUID_LEN];
+
 	/* defragmentation parameters */
 	int defrag_shrink;
 	u_int64_t defrag_start;

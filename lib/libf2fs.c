@@ -573,6 +573,7 @@ void f2fs_init_configuration(void)
 	c.trim = 1;
 	c.ro = 0;
 	c.kd = -1;
+	c.set_uuid = 0;
 }
 
 static int is_mounted(const char *mpt, const char *device)

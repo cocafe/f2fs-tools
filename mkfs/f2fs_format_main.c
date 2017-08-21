@@ -10,6 +10,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
@@ -39,6 +40,7 @@ static void mkfs_usage()
 	MSG(0, "  -z # of sections per zone [default:1]\n");
 	MSG(0, "  -t 0: nodiscard, 1: discard [default:1]\n");
 	MSG(0, "  -m support zoned block device [default:0]\n");
+	MSG(0, "  -U set block device UUID\n");
 	MSG(0, "sectors: number of sectors. [default: determined by device size]\n");
 	exit(1);
 }
@@ -70,9 +72,46 @@ static void parse_feature(const char *features)
 	}
 }
 
+static int f2fs_parse_uuid(void)
+{
+	char *buf_strip;
+	char buf[3];
+	u8 buf_u8;
+	size_t i;
+	size_t j;
+
+	buf_strip = calloc(1, sizeof(char) * strlen(c.str_uuid));
+	if (!buf_strip)
+		return -ENOMEM;
+
+	// strip '-' if exists
+	for (i = 0, j = 0; i < strlen(c.str_uuid); i++) {
+		if (c.str_uuid[i] != '-') {
+			buf_strip[j] = c.str_uuid[i];
+			j++;
+		}
+	}
+
+	if (strlen(buf_strip) < F2FS_UUID_LEN * 2)
+		return -EINVAL;
+
+	for (i = 0; i < F2FS_UUID_LEN * 2; i += 2) {
+		memset(buf, '\0', sizeof(buf));
+		memcpy(buf, &buf_strip[i], sizeof(char) * 2);
+
+		buf_u8 = (u8)strtoul(buf, NULL, 16);
+		c.s_uuid[i / 2] = buf_u8;
+	}
+
+	free(buf_strip);
+	free(c.str_uuid);
+
+	return 0;
+}
+
 static void f2fs_parse_options(int argc, char *argv[])
 {
-	static const char *option_string = "qa:c:d:e:l:mo:O:s:z:t:";
+	static const char *option_string = "qa:c:d:e:l:mo:O:s:z:t:U:";
 	int32_t option=0;
 
 	while ((option = getopt(argc,argv,option_string)) != EOF) {
@@ -128,6 +167,10 @@ static void f2fs_parse_options(int argc, char *argv[])
 		case 't':
 			c.trim = atoi(optarg);
 			break;
+		case 'U':
+			c.set_uuid = 1;
+			c.str_uuid = strdup(optarg);
+			break;
 		default:
 			MSG(0, "\tError: Unknown option %c\n",option);
 			mkfs_usage();
@@ -160,6 +203,11 @@ int main(int argc, char *argv[])
 	f2fs_init_configuration();
 
 	f2fs_parse_options(argc, argv);
+
+	if (f2fs_parse_uuid()) {
+		MSG(0, "\tError: Invaild UUID\n");
+		return -1;
+	}
 
 	f2fs_show_info();
 
